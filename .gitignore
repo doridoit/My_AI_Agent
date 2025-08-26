@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Env & secrets
+.env
+.env.*
+
+# App artifacts
+logs/
+vector_store/
+.data/
+
+# OS / misc
+.DS_Store

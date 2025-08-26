@@ -1,0 +1,14 @@
+streamlit
+pandas
+numpy
+scikit-learn
+langchain
+langchain-openai
+pypdf
+faiss-cpu
+tiktoken
+python-dotenv
+mcp
+pydantic
+tenacity
+requests
