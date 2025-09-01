@@ -23,19 +23,21 @@
   - Z-score, IQR, Isolation Forest 등 제공
   - 이상치 인덱스 및 요약 리포트 반환
 
-- **대화형 LLM 챗봇**
+- **대화형 LLM 챗봇 + RAG 연동**
   - LangChain 기반 챗봇 → 자연어로 데이터 관련 질의응답
-  - Google Gemini, OpenAI 모델 선택 가능
-  - API 키는 `.env`로 관리
-  - 대화 기록은 `logs/chat_log.csv` 저장
+  - PDF 업로드 후 인덱싱하면 챗봇이 문서 조각을 컨텍스트로 활용해 답변
+  - 검색 결과가 없으면 CSV 위주로 답변하며 간단 안내 문구 표시(옵션)
+  - Google Gemini, OpenAI 모델 선택 가능 (키는 `.env`)
+  - 대화 기록 저장은 추후 추가 예정
 
-- **RAG (Retrieval-Augmented Generation)** *(P1 예정)*
-  - PDF 문서 파싱 및 벡터화
-  - 관련 문서 검색 + 인용과 함께 답변
+- **RAG (Retrieval-Augmented Generation)**
+  - PDF 파싱·청킹·임베딩 후 FAISS 인덱스 생성/저장
+  - RAG 탭에서 키워드 검색, Chat에서도 동일 인덱스를 자동 활용
+  - 자동 재인덱싱: PDF/임베딩 설정 변경 시 자동 갱신(토글 가능)
 
-- **MCP 통합** *(P1 예정)*
-  - MCP 서버/클라이언트 구조로 기능 확장
-  - Chat/EDA/Anomaly/RAG 기능을 MCP Tool로 노출
+- **MCP 통합**
+  - Uvicorn 기반 FastAPI 서버(8001 Core, 8002 Data Tools)
+  - Chat/EDA/RAG를 MCP Tool API로 노출
 
 ---
 
@@ -65,11 +67,14 @@ source .venv/bin/activate   # macOS/Linux
 pip install -r requirements.txt
 ```
 
-### 2. API 키 설정
+### 2. API 키/임베딩 설정
 `.env` 파일 생성 후 원하는 키를 입력하세요:
 ```env
 GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
 OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+# (선택) 임베딩 설정 — 기본은 Google Gemini 임베딩
+EMBEDDING_PROVIDER=google
+EMBEDDING_MODEL=models/text-embedding-004
 ```
 
 ### 3. 애플리케이션 실행
@@ -78,12 +83,20 @@ streamlit run main.py
 ```
 → 브라우저에서 `http://localhost:8501` 접속
 
+또는 Makefile로 UI/서버 동시 실행:
+```bash
+make run                 # UI(8501) + Core(8001) + Data Tools(8002)
+make run-ui
+make run-core-server
+make run-data-tools-server
+```
+
 ---
 
 ## 📂 프로젝트 구조
 
 ```
-ai.agent_proto/
+My_AI_Agent/
 ├── main.py                      # Streamlit 앱 실행 파일
 ├── requirements.txt             # 패키지 목록
 ├── .env.example                 # 환경변수 예시
@@ -116,9 +129,45 @@ ai.agent_proto/
 
 ---
 
+## 🧭 사용 방법 (요약)
+
+- Chat & Upload 탭
+  - CSV 업로드 → EDA/챗봇에서 활용
+  - PDF 업로드 → “📚 PDF 인덱싱 실행(재인덱싱)” 또는 자동 재인덱싱으로 벡터 인덱스 생성
+  - 인덱싱 완료 후 Chat에서 질문하면 PDF 조각이 컨텍스트로 반영됨
+
+- RAG 탭
+  - 키워드 입력 → 유사 문서 조각 확인 → LLM으로 간단 답변 생성
+
+- 자동 재인덱싱
+  - 기본 ON. PDF 목록/임베딩 설정(EMBEDDING_PROVIDER/MODEL) 변경 시 자동 실행
+  - 무한 반복 방지 가드 내장, 필요 시 체크박스로 OFF 가능
+
+## 🧰 트러블슈팅
+
+- Chat에 “RAG 검색 결과가 없어 CSV 위주로 답합니다.”가 보일 때
+  - 인덱스 없음/로딩 실패/검색 0건일 수 있습니다.
+  - RAG 탭에서 동일 키워드로 검색이 되는지 확인 → 안 되면 PDF 재업로드 및 재인덱싱
+  - 인덱스 경로: `data/vector_store/faiss_index` (앱에서 절대경로로 서버에 전달)
+  - Core 서버(8001) 콘솔의 `[RAG] ...` 로그 확인
+
+- 임베딩 경고 `[WARN] Google provider ...]`
+  - 서버가 `.env`를 못 읽을 때 발생. 현재 서버/임베더에서 `.env`를 로드하도록 반영됨.
+  - 정확도를 위해 `GOOGLE_API_KEY` 설정 후 재인덱싱 권장(폴백 임베딩도 동작은 함)
+
+- FAISS 로드 오류
+  - `faiss-cpu` 설치 필요(요구사항에 포함). LangChain 로더는 `allow_dangerous_deserialization=True`로 동작.
+
+## 🧹 Git 관리
+
+- `.gitignore` 정책: 데이터/벡터/로그는 기본 무시, 샘플/가이드는 허용
+  - 무시: `data/*`, `vector_store/*`, `logs/*`
+  - 허용: `!data/README.md`, `!data/melting_tank.csv`, `!data/samples/**`, `!data/.gitkeep`, `!logs/.gitkeep`, `!vector_store/.gitkeep`
+- 패키지 인식 안정성을 위해 `modules/**/__init__.py` 포함
+
 ## 📜 진행 상황
-- ✅ P0: 구조 세팅, 기본 EDA, Ping 테스트, 로그 export  
-- 🔄 P1 예정: 이상탐지, RAG, MCP 클라이언트 통합  
-- 📈 P2 이후: 모델 확장, Docker 배포, 문서화 강화  
+- ✅ P0: 구조 세팅, 기본 EDA, Ping 테스트  
+- ✅ P1: RAG 인덱싱/탐색, Chat 연동, 자동 재인덱싱, 프롬프트/폴백 개선  
+- 🔄 P2: 이상탐지 고도화, RAG 소스 인용/하이라이트, Docker 배포  
 
 ---
