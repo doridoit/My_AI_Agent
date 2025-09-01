@@ -12,3 +12,13 @@ mcp
 pydantic
 tenacity
 requests
+langchain-google-genai
+google-generativeai
+pdfminer.six
+matplotlib
+seaborn
+langchain-community
+sentence-transformers
+langchain-huggingface
+fastapi
+uvicorn
