@@ -28,6 +28,11 @@ class RAGQueryResponse(BaseModel):
     sources: str
     query: str
 
+class RagSearchParams(BaseModel):
+    query: str
+    rag_index_exists: bool = False
+    index_dir: Optional[str] = None
+
 PROMPT_TEMPLATE = """
 당신은 데이터 분석 어시스턴트입니다. 아래 컨텍스트를 참고하되, 질문 의도에 맞춰 유연하게 답하세요.
 
@@ -243,4 +248,30 @@ def health_head():
 
 if __name__ == "__main__":
     import uvicorn
+
+@app.post("/tools/rag_search")
+def rag_search(params: RagSearchParams):
+    q = params.query
+    idx_dir = params.index_dir
+    out: List[Dict] = []
+    try:
+        if idx_dir and os.path.isdir(idx_dir):
+            embeddings = CustomEmbeddings()
+            store = FAISS.load_local(idx_dir, embeddings=embeddings, allow_dangerous_deserialization=True)
+            hits = store.similarity_search(q, k=5)
+            for h in hits:
+                if hasattr(h, "page_content"):
+                    out.append({"text": h.page_content, "metadata": getattr(h, "metadata", {})})
+                elif isinstance(h, dict):
+                    out.append({"text": h.get("text") or h.get("page_content") or "", "metadata": h.get("metadata", {})})
+        elif params.rag_index_exists:
+            hits = retrieve(q, k=5)
+            for h in hits:
+                if hasattr(h, "page_content"):
+                    out.append({"text": h.page_content, "metadata": getattr(h, "metadata", {})})
+                elif isinstance(h, dict):
+                    out.append({"text": h.get("text") or h.get("page_content") or "", "metadata": h.get("metadata", {})})
+    except Exception as e:
+        return {"hits": [], "error": str(e)}
+    return {"hits": out}
     uvicorn.run(app, host="0.0.0.0", port=8001)

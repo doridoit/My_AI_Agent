@@ -3,9 +3,10 @@ import time
 from typing import Optional
 
 import httpx
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
 
 
 CORE_URL = os.getenv("CORE_LOGIC_SERVER_URL", "http://localhost:8001")
@@ -67,6 +68,23 @@ async def api_chat(body: ChatBody):
             raise HTTPException(status_code=502, detail=f"Upstream error: {e}")
 
 
+@app.get("/api/chat/stream")
+async def api_chat_stream(q: str = Query(..., alias="q")):
+    async def gen():
+        # 현재 core는 스트리밍을 지원하지 않으므로, 전체 응답을 받아 단일 이벤트로 전달
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                r = await client.post(f"{CORE_URL}/tools/chat_with_context", json={"user_query": q})
+                r.raise_for_status()
+                data = r.json()
+                text = data.get("answer", "")
+            except Exception as e:
+                text = f"오류: {e}"
+        yield f"data: {text}\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
+
+
 @app.post("/api/eda/profile")
 async def api_eda_profile(body: EDAProfileBody):
     async with httpx.AsyncClient(timeout=60.0) as client:
@@ -76,6 +94,25 @@ async def api_eda_profile(body: EDAProfileBody):
             r = None
         try:
             r = await client.post(f"{DATA_URL}/tools/eda_profile", json=body.dict())
+            r.raise_for_status()
+            return r.json()
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Upstream error: {e}")
+
+
+class RagSearchBody(BaseModel):
+    query: str
+    index_dir: Optional[str] = None
+    rag_index_exists: bool = False
+
+
+@app.post("/api/rag/search")
+async def api_rag_search(body: RagSearchBody):
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            r = await client.post(f"{CORE_URL}/tools/rag_search", json=body.dict())
             r.raise_for_status()
             return r.json()
         except httpx.HTTPStatusError as e:
@@ -116,4 +153,3 @@ async def upload_pdf(file: UploadFile = File(...)):
             raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Upstream error: {e}")
-
