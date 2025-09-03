@@ -77,16 +77,9 @@ EMBEDDING_PROVIDER=google
 EMBEDDING_MODEL=models/text-embedding-004
 ```
 
-### 3. 애플리케이션 실행
+### 3. 애플리케이션 실행 (TS 프런트 + API 게이트웨이)
 ```bash
-streamlit run main.py
-```
-→ 브라우저에서 `http://localhost:8501` 접속
-
-또는 Makefile로 UI/서버 동시 실행:
-```bash
-make run                 # UI(8501) + Core(8001) + Data Tools(8002)
-make run-ui
+make run                 # API(9000) + Core(8001) + Data Tools(8002)
 make run-core-server
 make run-data-tools-server
 make run-api             # API Gateway (9000)
@@ -132,19 +125,18 @@ My_AI_Agent/
 
 ---
 
+프런트엔드 개발 서버(로컬):
+```bash
+cd frontend
+npm install
+npm run dev   # http://localhost:3000
+```
+
 ## 🧭 사용 방법 (요약)
 
-- Chat & Upload 탭
-  - CSV 업로드 → EDA/챗봇에서 활용
-  - PDF 업로드 → “📚 PDF 인덱싱 실행(재인덱싱)” 또는 자동 재인덱싱으로 벡터 인덱스 생성
-  - 인덱싱 완료 후 Chat에서 질문하면 PDF 조각이 컨텍스트로 반영됨
-
-- RAG 탭
-  - 키워드 입력 → 유사 문서 조각 확인 → LLM으로 간단 답변 생성
-
-- 자동 재인덱싱
-  - 기본 ON. PDF 목록/임베딩 설정(EMBEDDING_PROVIDER/MODEL) 변경 시 자동 실행
-  - 무한 반복 방지 가드 내장, 필요 시 체크박스로 OFF 가능
+- Chat: /chat에서 질문(스트리밍/비스트리밍 토글)
+- EDA: /eda에서 CSV 업로드→프로파일 호출 및 차트 표시, 서버 업로드 버튼 제공
+- RAG: /rag에서 키워드 검색→문서 조각 반환
 
 ---
 
