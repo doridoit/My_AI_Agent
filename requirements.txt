@@ -17,6 +17,7 @@ google-generativeai
 pdfminer.six
 matplotlib
 seaborn
+altair
 langchain-community
 sentence-transformers
 langchain-huggingface

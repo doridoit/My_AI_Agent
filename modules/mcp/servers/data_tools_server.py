@@ -8,6 +8,15 @@ from starlette.responses import Response
 from pydantic import BaseModel
 import pandas as pd
 import base64, io, time, requests
+import numpy as np
+from typing import Optional, Dict, Any, List
+
+try:
+    from sklearn.decomposition import PCA
+    from sklearn.preprocessing import StandardScaler
+except Exception:
+    PCA = None
+    StandardScaler = None
 
 # --- FastAPI app ---
 app = FastAPI(title="ai.agent.data_tools", description="Data tools server for EDA, uploads, and utilities.")
@@ -68,6 +77,123 @@ def eda_summary(params: EDAParams):
         "nulls": nulls,
         "dtypes": dtypes,
         "corr(num<=30)": corr,
+    }
+
+class EDAProfileParams(BaseModel):
+    csv_b64: str
+    max_pca_points: int = 2000
+    random_state: int = 42
+
+@app.post("/tools/eda_profile")
+def eda_profile(params: EDAProfileParams):
+    raw = base64.b64decode(params.csv_b64.encode())
+    df = pd.read_csv(io.BytesIO(raw))
+
+    # Basic info
+    n_rows, n_cols = df.shape
+    nulls = df.isna().sum().astype(int).to_dict()
+    dtypes = df.dtypes.astype(str).to_dict()
+
+    # Numeric statistics
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+    numeric_stats: Dict[str, Dict[str, Any]] = {}
+    for c in numeric_cols:
+        s = df[c]
+        if not np.issubdtype(s.dtype, np.number):
+            continue
+        sd = s.dropna()
+        if sd.empty:
+            continue
+        mean_v = float(sd.mean())
+        std_v = float(sd.std(ddof=1)) if len(sd) > 1 else 0.0
+        median_v = float(sd.median())
+        q1_v = float(sd.quantile(0.25))
+        q3_v = float(sd.quantile(0.75))
+        min_v = float(sd.min())
+        max_v = float(sd.max())
+        # Additional metrics
+        try:
+            skew_v = float(sd.skew())
+        except Exception:
+            skew_v = 0.0
+        try:
+            kurt_v = float(sd.kurt())
+        except Exception:
+            kurt_v = 0.0
+        try:
+            mad_v = float(np.median(np.abs(sd - median_v)))
+        except Exception:
+            mad_v = 0.0
+        if std_v and std_v > 0:
+            z_outliers = np.abs((sd - mean_v) / std_v) > 3.0
+            zout_cnt = int(z_outliers.sum())
+        else:
+            zout_cnt = 0
+        numeric_stats[c] = {
+            "min": min_v,
+            "q1": q1_v,
+            "median": median_v,
+            "q3": q3_v,
+            "max": max_v,
+            "mean": mean_v,
+            "std": std_v,
+            "skew": skew_v,
+            "kurtosis": kurt_v,  # Pandas kurt: excess kurtosis
+            "mad": mad_v,
+            "z_outliers_count": zout_cnt,
+            "missing": int(s.isna().sum()),
+        }
+
+    # Categorical top counts
+    cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+    category_counts: Dict[str, List[List[Any]]] = {}
+    for c in cat_cols:
+        try:
+            vc = df[c].astype(str).fillna("<NA>").value_counts(dropna=False).head(15)
+            category_counts[c] = [[k, int(v)] for k, v in vc.items()]
+        except Exception:
+            continue
+
+    # PCA 2D (if sklearn available and enough numeric columns)
+    pca_payload = None
+    if PCA is not None and StandardScaler is not None and len(numeric_cols) >= 2:
+        try:
+            X = df[numeric_cols].copy()
+            # Impute with mean for simplicity
+            X = X.astype(float)
+            X = X.fillna(X.mean(numeric_only=True))
+            # Remove zero-variance columns
+            var = X.var(numeric_only=True)
+            keep = var[var > 0].index.tolist()
+            X = X[keep]
+            if X.shape[1] >= 2:
+                # Sample rows for payload size safety
+                rng = np.random.default_rng(params.random_state)
+                idx = np.arange(len(X))
+                if len(X) > params.max_pca_points:
+                    idx = rng.choice(idx, size=params.max_pca_points, replace=False)
+                    idx.sort()
+                Xs = X.iloc[idx]
+                scaler = StandardScaler()
+                Xn = scaler.fit_transform(Xs.values)
+                pca = PCA(n_components=2, random_state=params.random_state)
+                xy = pca.fit_transform(Xn)
+                pca_payload = {
+                    "row_indices": idx.tolist() if isinstance(idx, np.ndarray) else list(idx),
+                    "x": xy[:, 0].astype(float).tolist(),
+                    "y": xy[:, 1].astype(float).tolist(),
+                    "explained_variance_ratio": [float(v) for v in pca.explained_variance_ratio_],
+                }
+        except Exception as e:
+            pca_payload = {"error": str(e)}
+
+    return {
+        "shape": {"rows": int(n_rows), "cols": int(n_cols)},
+        "nulls": nulls,
+        "dtypes": dtypes,
+        "numeric_stats": numeric_stats,
+        "category_counts": category_counts,
+        "pca2d": pca_payload,
     }
 
 class PingParams(BaseModel):
