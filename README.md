@@ -140,19 +140,18 @@ npm run dev   # http://localhost:3000
 
 ---
 
-## 🧱 프런트엔드(Typescript) 초석
+## 🧱 프런트엔드(Typescript)
 
-- 위치: `frontend/` (Next.js + TS 스켈레톤)
+- 위치: `ui/` (Vite + React + TypeScript)
 - 개발 서버 실행(로컬):
   ```bash
-  cd frontend
+  cd ui
   npm install   # 최초 1회
   npm run dev   # http://localhost:3000
   ```
-- 환경변수: `NEXT_PUBLIC_API_BASE_URL` (기본 `http://localhost:9000`)
-- 라우트:
-  - `/` 홈, `/chat` 간단 챗 UI, `/eda` CSV 업로드→EDA 프로파일 호출
+- 개발 환경변수: `ui/.env` 파일에 `VITE_API_BASE_URL=http://localhost:9000`
 - 백엔드: `make run-api`로 FastAPI 게이트웨이(9000) 기동 후 연동
+- UI는 `/api` 요청을 자동으로 게이트웨이로 프록시합니다(vite.config.ts).
 
 ## 🧰 트러블슈팅
 
