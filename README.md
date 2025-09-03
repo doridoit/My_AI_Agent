@@ -89,6 +89,7 @@ make run                 # UI(8501) + Core(8001) + Data Tools(8002)
 make run-ui
 make run-core-server
 make run-data-tools-server
+make run-api             # API Gateway (9000)
 ```
 
 ---
@@ -144,6 +145,22 @@ My_AI_Agent/
 - 자동 재인덱싱
   - 기본 ON. PDF 목록/임베딩 설정(EMBEDDING_PROVIDER/MODEL) 변경 시 자동 실행
   - 무한 반복 방지 가드 내장, 필요 시 체크박스로 OFF 가능
+
+---
+
+## 🧱 프런트엔드(Typescript) 초석
+
+- 위치: `frontend/` (Next.js + TS 스켈레톤)
+- 개발 서버 실행(로컬):
+  ```bash
+  cd frontend
+  npm install   # 최초 1회
+  npm run dev   # http://localhost:3000
+  ```
+- 환경변수: `NEXT_PUBLIC_API_BASE_URL` (기본 `http://localhost:9000`)
+- 라우트:
+  - `/` 홈, `/chat` 간단 챗 UI, `/eda` CSV 업로드→EDA 프로파일 호출
+- 백엔드: `make run-api`로 FastAPI 게이트웨이(9000) 기동 후 연동
 
 ## 🧰 트러블슈팅
 

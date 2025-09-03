@@ -7,7 +7,7 @@ HOST := 0.0.0.0
 UVFLAGS := --host $(HOST)
 
 # Phony targets don't represent files
-.PHONY: run run-dev stop run-ui run-core-server run-data-tools-server
+.PHONY: run run-dev stop run-ui run-core-server run-data-tools-server run-api
 
 # Default command to run all necessary services concurrently
 # It now depends on the 'stop' target to clean up ports first.
@@ -52,3 +52,7 @@ run-core-server:
 # Run only the Data Tools MCP server
 run-data-tools-server:
 	$(UV) modules.mcp.servers.data_tools_server:app $(UVFLAGS) --port 8002
+
+# API Gateway (FastAPI)
+run-api:
+	$(UV) api.main:app $(UVFLAGS) --port 9000
