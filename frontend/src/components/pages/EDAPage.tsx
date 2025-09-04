@@ -1,4 +1,4 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { TrendingUp, BarChart3, PieChart, Zap, Database, AlertCircle, Target } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
@@ -11,7 +11,7 @@ import { edaProfileFromParsed } from "../../lib/api"
 
 interface EDAPageProps {
   uploadedData: any
-  setAnalysisResults: (results: any[]) => void
+  setAnalysisResults: React.Dispatch<React.SetStateAction<any[]>>
   analysisResults: any[]
 }
 
@@ -135,36 +135,39 @@ export function EDAPage({ uploadedData, setAnalysisResults, analysisResults }: E
 
       {/* 빠른 분석 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {edaCards.map((card) => (
-          <Card key={card.action} className="group hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg bg-gradient-to-r ${card.color} text-white group-hover:scale-110 transition-transform`}>
-                  <card.icon className="h-5 w-5" />
+        {edaCards.map((card) => {
+          const Icon: any = card.icon
+          return (
+            <Card key={card.action} className="group hover:shadow-lg transition-all duration-300 cursor-pointer">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg bg-gradient-to-r ${card.color} text-white group-hover:scale-110 transition-transform`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">{card.title}</CardTitle>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-base">{card.title}</CardTitle>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-muted-foreground mb-4">{card.description}</p>
-              <Button 
-                onClick={() => runEDAAnalysis(card.action)}
-                disabled={isAnalyzing}
-                className="w-full gap-2"
-                size="sm"
-              >
-                {isAnalyzing ? (
-                  <Zap className="h-4 w-4 animate-pulse" />
-                ) : (
-                  <Zap className="h-4 w-4" />
-                )}
-                분석 실행
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-sm text-muted-foreground mb-4">{card.description}</p>
+                <Button 
+                  onClick={() => runEDAAnalysis(card.action)}
+                  disabled={isAnalyzing}
+                  className="w-full gap-2"
+                  size="sm"
+                >
+                  {isAnalyzing ? (
+                    <Zap className="h-4 w-4 animate-pulse" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  분석 실행
+                </Button>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       {/* 메인 분석 영역 */}

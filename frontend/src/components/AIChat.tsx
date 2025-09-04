@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { Send, Bot, User, Loader2 } from "lucide-react"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
@@ -22,9 +22,10 @@ interface AIChatProps {
   pdfDocuments?: any[]
   onAnalysisResult: (result: any) => void
   isRAGEnabled?: boolean
+  ragIndexDir?: string | null
 }
 
-export function AIChat({ data, pdfDocuments = [], onAnalysisResult, isRAGEnabled = false }: AIChatProps) {
+export function AIChat({ data, pdfDocuments = [], onAnalysisResult, isRAGEnabled = false, ragIndexDir = null }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -63,7 +64,11 @@ ${pdfDocuments.length > 0 ? `📚 ${pdfDocuments.length}개의 PDF 문서가 인
     setIsLoading(true)
 
     try {
-      const resp = await chat(inputValue);
+      const resp = await chat(inputValue, {
+        uploadedData: data,
+        index_dir: ragIndexDir,
+        rag_index_exists: Boolean(ragIndexDir),
+      });
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
@@ -298,7 +303,7 @@ ${pdfDocuments.length > 0 ? '• 문서 기반 질의응답' : ''}
                 </Avatar>
               )}
               
-              <Card className={`max-w-[80%] ${message.type === 'user' ? 'bg-primary text-primary-foreground' : ''}`}>
+              <Card className={`max-w-[80%] overflow-hidden ${message.type === 'user' ? 'bg-primary text-primary-foreground' : ''}`}>
                 <CardContent className="p-3">
                   <div className="space-y-2">
                     {message.analysisType && (
@@ -306,7 +311,7 @@ ${pdfDocuments.length > 0 ? '• 문서 기반 질의응답' : ''}
                         {message.analysisType}
                       </Badge>
                     )}
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {message.content}
                     </p>
                     <div className="text-xs opacity-70">

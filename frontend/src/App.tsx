@@ -13,6 +13,7 @@ export default function App() {
   const [uploadedData, setUploadedData] = useState(null)
   const [pdfDocuments, setPdfDocuments] = useState([])
   const [analysisResults, setAnalysisResults] = useState([])
+  const [ragIndexDir, setRagIndexDir] = useState<string | null>(null)
   const [mcpStatus, setMcpStatus] = useState({
     core: 'disconnected',
     dataTools: 'disconnected'
@@ -25,6 +26,8 @@ export default function App() {
     setPdfDocuments,
     analysisResults,
     setAnalysisResults,
+    ragIndexDir,
+    setRagIndexDir,
     mcpStatus,
     setMcpStatus
   }

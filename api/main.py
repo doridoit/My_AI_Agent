@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Optional
+from typing import Optional, List
 
 import httpx
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
@@ -147,6 +147,24 @@ async def upload_pdf(file: UploadFile = File(...)):
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             r = await client.post(f"{DATA_URL}/upload/pdf", files=files)
+            r.raise_for_status()
+            return r.json()
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Upstream error: {e}")
+
+
+@app.post("/api/rag/index")
+async def api_rag_index(files: List[UploadFile] = File(...)):
+    # Proxy multipart PDFs to data tools server for indexing
+    form = []
+    for f in files:
+        b = await f.read()
+        form.append(("files", (f.filename, b, "application/pdf")))
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        try:
+            r = await client.post(f"{DATA_URL}/tools/rag_index", files=form)
             r.raise_for_status()
             return r.json()
         except httpx.HTTPStatusError as e:

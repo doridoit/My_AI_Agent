@@ -2,9 +2,10 @@
 
 **프로젝트명:** AI 기반 데이터 분석 에이전트 (Data Analysis AI Agent)
 
-**요약:**  
-이 프로젝트는 Python의 **Streamlit**을 기반으로, 사용자가 업로드한 데이터를 **탐색적 데이터 분석(EDA)**, **이상 탐지**, 그리고 **LLM(대규모 언어 모델) 기반 챗봇**을 통해 대화형으로 분석할 수 있는 웹 애플리케이션입니다.  
-데이터 분석에 익숙하지 않은 사람도 쉽게 데이터를 탐색하고 인사이트를 얻을 수 있도록 돕는 것을 목표로 합니다.
+**요약:**
+- 프런트엔드(Typescript): Vite + React + ECharts로 인터랙티브 UI 제공
+- 백엔드(API 게이트웨이): FastAPI(9000) → MCP 서버(Core 8001, Data Tools 8002) 프록시/오케스트레이션
+- 기능: 업로드, EDA(요약/차트), 문서(RAG) 검색, 챗봇(선택적 스트리밍)
 
 ---
 
@@ -87,40 +88,22 @@ make run-api             # API Gateway (9000)
 
 ---
 
-## 📂 프로젝트 구조 (리팩토링 반영)
+## 📂 프로젝트 구조
 
 ```
 My_AI_Agent/
-├── main.py                      # 경량 라우터(페이지 위임/헤더/스타일/네비)
-├── requirements.txt             # 패키지 목록
-├── data/                        # 샘플/업로드 데이터(FAISS 인덱스 등)
-├── app/
-│   ├── pages/
-│   │   ├── chat_page.py         # 업로드·인덱싱·대화(MCP 연동)
-│   │   ├── eda_page.py          # KPI/요약/차트/이상치/PCA + EDA 챗봇
-│   │   ├── rag_page.py          # RAG 검색/답변
-│   │   ├── anomaly_page.py      # 이상치(자리 마련)
-│   │   └── settings_page.py     # 설정(자리 마련)
-│   ├── services/
-│   │   └── mcp_client.py        # MCP 호출 래퍼
-│   ├── header.py                # 헬스 배지 렌더러
-│   ├── theme.py                 # 사이드바/배지 CSS
-│   └── state.py                 # 세션 상태 유틸(초기화/셋/클리어/KB 관리)
-└── modules/
-    ├── processing/
-    │   └── eda.py               # (존치) EDA 로직
-    ├── chatbot/
-    │   ├── chain_factory.py
-    │   └── prompt_templates.py
-    ├── rag/
-    │   ├── pdf_parser.py
-    │   ├── embedder.py
-    │   ├── retriever.py
-    │   ├── rag_chain.py
-    │   └── vector_store/
-    └── mcp/
-        ├── servers/             # FastAPI MCP 서버(Core/Data Tools)
-        └── client/              # 기존 MCP 클라이언트(services 래퍼에서 사용)
+├── api/
+│   └── main.py                  # FastAPI API 게이트웨이(9000)
+├── modules/
+│   └── mcp/
+│       └── servers/
+│           ├── core_logic_server.py   # Core MCP(8001)
+│           └── data_tools_server.py   # Data Tools MCP(8002)
+├── frontend/                    # (개발용) Vite + React + TS 프런트엔드
+├── data/                        # 업로드/인덱스 데이터
+├── requirements.txt             # Python 백엔드/MCP 의존성
+├── Makefile                     # run, stop, run-api, run-core-server, run-data-tools-server, run-frontend
+└── README.md
 ```
 
 ---
@@ -142,16 +125,16 @@ npm run dev   # http://localhost:3000
 
 ## 🧱 프런트엔드(Typescript)
 
-- 위치: `ui/` (Vite + React + TypeScript)
+- 위치: `frontend/` (Vite + React + TypeScript)
 - 개발 서버 실행(로컬):
   ```bash
-  cd ui
+  cd frontend
   npm install   # 최초 1회
   npm run dev   # http://localhost:3000
   ```
-- 개발 환경변수: `ui/.env` 파일에 `VITE_API_BASE_URL=http://localhost:9000`
-- 백엔드: `make run-api`로 FastAPI 게이트웨이(9000) 기동 후 연동
-- UI는 `/api` 요청을 자동으로 게이트웨이로 프록시합니다(vite.config.ts).
+- 개발 환경변수: `frontend/.env`에 `VITE_API_BASE_URL=http://localhost:9000`
+- 백엔드: `make run-api`로 게이트웨이(9000) 기동 후 연동
+- Vite dev 서버는 `/api` 요청을 자동 프록시(vite.config.ts)합니다.
 
 ## 🧰 트러블슈팅
 
@@ -176,18 +159,11 @@ npm run dev   # http://localhost:3000
   - 허용: 샘플 데이터/문서(프로젝트에 맞게 유지)
 - 패키지 인식 안정성을 위해 `__init__.py` 유지
 
-### 코드 스타일/린팅 (Black + Ruff)
-
-- 설정 파일: `pyproject.toml`
-- Black(포매터): 코드 스타일을 자동 정렬(기본 라인 길이 100)
-- Ruff(린터/포매터): 빠른 린팅과 isort 포함(E,F,I 규칙 사용)
-
-실행 예시
-```bash
-# 포매팅(Black) + 린팅/자동수정(Ruff)
-ruff check --fix .
-black .
-```
 
 
 ---
+
+## 🧰 제작 도구(간단 메모)
+
+- 코드/디렉토리 구성: Codex CLI와 Gemini CLI를 활용해 스캐폴딩·리팩터·패치 초안을 만들고, 최종 검토는 수동으로 반영했습니다.
+- UI 초안: Figma Make(Figma AI)를 사용해 화면 흐름과 컴포넌트 구상을 잡고, 실제 구현은 React로 정리했습니다.

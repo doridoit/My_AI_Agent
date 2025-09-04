@@ -1,4 +1,4 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { Search, FileText, Brain, Zap, ArrowRight, Clock, BookOpen } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
@@ -11,8 +11,9 @@ import { ragSearch } from "../../lib/api"
 
 interface RAGPageProps {
   pdfDocuments: any[]
-  setAnalysisResults: (results: any[]) => void
+  setAnalysisResults: React.Dispatch<React.SetStateAction<any[]>>
   analysisResults: any[]
+  ragIndexDir?: string | null
 }
 
 interface SearchResult {
@@ -24,7 +25,7 @@ interface SearchResult {
   timestamp: Date
 }
 
-export function RAGPage({ pdfDocuments, setAnalysisResults, analysisResults }: RAGPageProps) {
+export function RAGPage({ pdfDocuments, setAnalysisResults, analysisResults, ragIndexDir = null }: RAGPageProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -38,7 +39,7 @@ export function RAGPage({ pdfDocuments, setAnalysisResults, analysisResults }: R
     setSearchResults([])
     setAiResponse("")
     try {
-      const data = await ragSearch(searchQuery);
+      const data = await ragSearch(searchQuery, { index_dir: ragIndexDir, rag_index_exists: Boolean(ragIndexDir) });
       const hits = (data?.hits || []).map((h: any, i: number) => ({
         id: String(i + 1),
         content: h.text || "",

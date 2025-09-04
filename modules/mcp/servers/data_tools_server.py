@@ -10,6 +10,10 @@ import pandas as pd
 import base64, io, time, requests
 import numpy as np
 from typing import Optional, Dict, Any, List
+from langchain_community.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from modules.rag.retriever import CustomEmbeddings
 
 try:
     from sklearn.decomposition import PCA
@@ -58,6 +62,51 @@ async def upload_pdf(file: UploadFile = File(...)):
     content = await file.read()
     size = len(content)
     return {"ok": True, "filename": file.filename, "size_bytes": size}
+
+# --- RAG indexing for PDFs ---------------------------------------------------
+@app.post("/tools/rag_index")
+async def rag_index(files: List[UploadFile] = File(...)):
+    """Accept one or more PDFs, build/save FAISS index, return index_dir."""
+    if not files:
+        raise HTTPException(status_code=400, detail="PDF 파일이 없습니다.")
+    for f in files:
+        if not f.filename.lower().endswith(".pdf"):
+            raise HTTPException(status_code=400, detail=f"PDF만 허용됩니다: {f.filename}")
+
+    tmp_dir = os.path.abspath(os.path.join("data", "tmp_uploads"))
+    os.makedirs(tmp_dir, exist_ok=True)
+    docs = []
+    names: List[str] = []
+    for uf in files:
+        raw = await uf.read()
+        tmp_path = os.path.join(tmp_dir, f"{int(time.time()*1000)}_{uf.filename}")
+        with open(tmp_path, "wb") as w:
+            w.write(raw)
+        try:
+            loader = PyPDFLoader(tmp_path)
+            docs.extend(loader.load())
+            names.append(uf.filename)
+        finally:
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+    if not docs:
+        raise HTTPException(status_code=400, detail="PDF에서 텍스트를 추출하지 못했습니다.")
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    chunks = splitter.split_documents(docs)
+
+    embeddings = CustomEmbeddings()
+    vs = FAISS.from_documents(chunks, embeddings)
+
+    base_dir = os.path.abspath(os.path.join("data", "vector_store"))
+    os.makedirs(base_dir, exist_ok=True)
+    index_dir = os.path.join(base_dir, "faiss_index")
+    vs.save_local(index_dir)
+
+    return {"ok": True, "files": names, "chunks": len(chunks), "index_dir": index_dir}
 
 # --- Tool-style endpoints ---------------------------------------------------
 class EDAParams(BaseModel):

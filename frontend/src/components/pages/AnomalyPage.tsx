@@ -1,4 +1,4 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { AlertTriangle, Zap, Target, BarChart3, TrendingUp, Database, Settings } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
@@ -11,7 +11,7 @@ import { Progress } from "../ui/progress"
 
 interface AnomalyPageProps {
   uploadedData: any
-  setAnalysisResults: (results: any[]) => void
+  setAnalysisResults: React.Dispatch<React.SetStateAction<any[]>>
   analysisResults: any[]
 }
 

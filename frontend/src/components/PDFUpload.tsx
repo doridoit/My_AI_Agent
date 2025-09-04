@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react"
-import { Upload, File, X, CheckCircle, FileText, Download } from "lucide-react"
+import React, { useState, useCallback } from "react"
+import { Upload, File as FileIcon, X, CheckCircle, FileText, Download } from "lucide-react"
 import { Button } from "./ui/button"
 import { Card, CardContent } from "./ui/card"
 import { Badge } from "./ui/badge"
@@ -53,6 +53,7 @@ export function PDFUpload({ documents, onDocumentsChange }: PDFUploadProps) {
       size: file.size,
       uploadedAt: new Date().toISOString(),
       type: 'pdf',
+      file,
       pages: Math.floor(Math.random() * 50) + 1, // 임시 페이지 수
       processed: false
     }
@@ -63,23 +64,27 @@ export function PDFUpload({ documents, onDocumentsChange }: PDFUploadProps) {
     setDragOver(false)
   }
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
-    const files = Array.from(e.dataTransfer.files)
-    files.forEach(file => {
+    const fileList = e.dataTransfer?.files;
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList) as File[];
+    files.forEach((file: File) => {
       if (file.name.toLowerCase().endsWith('.pdf')) {
-        processFile(file)
+        processFile(file);
       }
-    })
+    });
   }, [documents])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    files.forEach(file => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList) as File[];
+    files.forEach((file: File) => {
       if (file.name.toLowerCase().endsWith('.pdf')) {
-        processFile(file)
+        processFile(file);
       }
-    })
+    });
   }
 
   const removeDocument = (id: string) => {

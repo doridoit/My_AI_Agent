@@ -1,4 +1,4 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { Upload, FileText, Database, Brain, Zap, RefreshCw, MessageSquare } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
@@ -12,11 +12,13 @@ import { PDFUpload } from "../PDFUpload"
 
 interface ChatUploadPageProps {
   uploadedData: any
-  setUploadedData: (data: any) => void
+  setUploadedData: React.Dispatch<React.SetStateAction<any>>
   pdfDocuments: any[]
-  setPdfDocuments: (docs: any[]) => void
+  setPdfDocuments: React.Dispatch<React.SetStateAction<any[]>>
   analysisResults: any[]
-  setAnalysisResults: (results: any[]) => void
+  setAnalysisResults: React.Dispatch<React.SetStateAction<any[]>>
+  ragIndexDir?: string | null
+  setRagIndexDir?: React.Dispatch<React.SetStateAction<string | null>>
 }
 
 export function ChatUploadPage({
@@ -25,7 +27,9 @@ export function ChatUploadPage({
   pdfDocuments,
   setPdfDocuments,
   analysisResults,
-  setAnalysisResults
+  setAnalysisResults,
+  ragIndexDir = null,
+  setRagIndexDir,
 }: ChatUploadPageProps) {
   const [isIndexing, setIsIndexing] = useState(false)
   const [indexingProgress, setIndexingProgress] = useState(0)
@@ -37,20 +41,40 @@ export function ChatUploadPage({
     setIsIndexing(true)
     setIndexingProgress(0)
 
-    // 인덱싱 프로세스 시뮬레이션
-    const intervals = [20, 40, 60, 80, 100]
-    for (let i = 0; i < intervals.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 800))
-      setIndexingProgress(intervals[i])
+    try {
+      const files: File[] = pdfDocuments.map((d: any) => d.file).filter(Boolean)
+      if (files.length === 0) {
+        throw new Error('인덱싱할 PDF 파일 객체가 없습니다. 다시 업로드 해주세요.')
+      }
+      // 진행률 간단 시뮬레이션 + 실제 API 호출
+      const intervals = [15, 35, 55, 75]
+      for (let i = 0; i < intervals.length; i++) {
+        await new Promise(r => setTimeout(r, 500))
+        setIndexingProgress(intervals[i])
+      }
+      const { ragIndex } = await import("../../lib/api")
+      const res = await ragIndex(files)
+      setIndexingProgress(100)
+      // 문서 상태 업데이트
+      setPdfDocuments(pdfDocuments.map((d: any) => ({ ...d, processed: true })))
+      // 인덱스 경로 저장 (전역)
+      if (typeof (setRagIndexDir) === 'function') {
+        setRagIndexDir(res?.index_dir || null)
+      }
+      setAnalysisResults(prev => [...prev, {
+        type: "indexing",
+        content: `${pdfDocuments.length}개 PDF 문서 인덱싱 완료.`,
+        timestamp: new Date()
+      }])
+    } catch (e) {
+      setAnalysisResults(prev => [...prev, {
+        type: "indexing_error",
+        content: `인덱싱 실패: ${String(e)}`,
+        timestamp: new Date()
+      }])
+    } finally {
+      setIsIndexing(false)
     }
-
-    setIsIndexing(false)
-    // 분석 결과에 인덱싱 완료 추가
-    setAnalysisResults(prev => [...prev, {
-      type: "indexing",
-      content: `${pdfDocuments.length}개 PDF 문서가 성공적으로 인덱싱되었습니다.`,
-      timestamp: new Date()
-    }])
   }
 
   return (
@@ -228,6 +252,7 @@ export function ChatUploadPage({
                 pdfDocuments={pdfDocuments}
                 onAnalysisResult={(result) => setAnalysisResults(prev => [...prev, result])}
                 isRAGEnabled={pdfDocuments.length > 0}
+                ragIndexDir={typeof (ragIndexDir) !== 'undefined' ? ragIndexDir : null}
               />
             </CardContent>
           </Card>

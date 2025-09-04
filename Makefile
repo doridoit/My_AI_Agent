@@ -12,12 +12,16 @@ UVFLAGS := --host $(HOST)
 # Default command to run all necessary services concurrently
 # It now depends on the 'stop' target to clean up ports first.
 run: stop
-	@echo "Starting API + MCP servers..."
+	@echo "Starting Frontend + API + MCP servers..."
+	@echo "- Frontend (Vite):   http://localhost:3000"
 	@echo "- API Gateway:       http://localhost:9000"
 	@echo "- Core Logic Server: http://localhost:8001"
 	@echo "- Data Tools Server: http://localhost:8002"
 	@echo "Press Ctrl+C to stop all services."
 	@trap 'echo "\nStopping all services..."; kill $$! $(jobs -p) 2>/dev/null' SIGINT ; \
+	( if [ -d frontend ]; then cd frontend && npm install && npm run dev; \
+	  elif [ -d ui ]; then cd ui && npm install && npm run dev; \
+	  else echo "No frontend directory found (expected frontend/ or ui/)"; fi ) & \
 	$(UV) api.main:app $(UVFLAGS) --port 9000 --log-level warning & \
 	$(UV) modules.mcp.servers.core_logic_server:app $(UVFLAGS) --port 8001 --log-level warning & \
 	$(UV) modules.mcp.servers.data_tools_server:app $(UVFLAGS) --port 8002 --log-level warning & \
@@ -49,4 +53,4 @@ run-api:
 
 # Frontend (Vite UI)
 run-frontend:
-	cd ui && npm install && npm run dev
+	cd frontend && npm install && npm run dev

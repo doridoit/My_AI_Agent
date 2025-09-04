@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react"
-import { Upload, File, X, CheckCircle } from "lucide-react"
+import React, { useState, useCallback } from "react"
+import { Upload, File as FileIcon, X, CheckCircle } from "lucide-react"
 import { Button } from "./ui/button"
 import { Card, CardContent } from "./ui/card"
 import { Badge } from "./ui/badge"
@@ -94,19 +94,19 @@ export function DataUpload({ onDataUploaded, uploadedData }: DataUploadProps) {
     setDragOver(false)
   }
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
-    const files = Array.from(e.dataTransfer.files)
-    if (files.length > 0) {
-      processFile(files[0])
-    }
+    const fileList = e.dataTransfer?.files;
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList) as File[];
+    processFile(files[0]);
   }, [])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length > 0) {
-      processFile(files[0])
-    }
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList) as File[];
+    processFile(files[0]);
   }
 
   const generateSampleData = () => {
@@ -145,7 +145,7 @@ export function DataUpload({ onDataUploaded, uploadedData }: DataUploadProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <File className="h-8 w-8 text-blue-500" />
+                <FileIcon className="h-8 w-8 text-blue-500" />
                 <div>
                   <p className="font-medium">{uploadedData.filename}</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { FileText, Download, Trash2, Clock, TrendingUp, BarChart, PieChart } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
